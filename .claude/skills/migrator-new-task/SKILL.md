@@ -1,0 +1,99 @@
+---
+name: migrator-new-task
+description: Створити нове завдання переносу (schema.yaml) для Migrator. Використовуй, коли потрібно перенести НОВИЙ довідник/документ, якого ще немає серед завдань Migrator
+argument-hint: <корінь_завдань>:<назва_завдання> <Справочник|Документ>.<Ім'я>
+allowed-tools: []
+---
+
+# /migrator-new-task — створення нового завдання переносу
+
+Migrator (https://github.com/BusinessAutomationFramework/Migrator) переносить
+довідники/документи між двома базами 1С за декларативною схемою
+`schema.yaml`. Цей скіл - покроковий гайд для СТВОРЕННЯ нового завдання;
+для запуску вже готового - див. `/migrator-run-task`; для перевірки
+результату - `/migrator-verify-transfer`.
+
+## Крок 1. Визначити корінь завдань
+
+Завдання адресується як `<корінь>:<завдання>` і резолвиться у
+`<шлях_кореня>/<завдання>/schema.yaml` (`migrator.config.yaml` у корені
+репозиторію Migrator). Якщо потрібен НОВИЙ корінь (напр. окремий
+приватний git-репозиторій для бізнес-специфічних схем) - додайте його в
+`task_roots` там же, ПЕРЕД створенням завдання.
+
+## Крок 2. Пробна вибірка + auto-suggest пов'язаних довідників
+
+```powershell
+cd <шлях_до_Migrator>
+python -m migrator suggest <корінь>:<завдання> --sample 20
+```
+
+Якщо завдання ще не існує - створіть МІНІМАЛЬНИЙ `schema.yaml` спочатку
+(лише `source`/`destination`/`kind`/`name`, без `related_catalogs`), щоб
+`suggest` міг зробити пробний запит. Команда виведе ВСІ `__ref_type__`,
+що реально трапились у вибірці - готову заготовку для `related_catalogs`.
+
+## Крок 3. Написати повний schema.yaml
+
+Мінімальний скелет:
+
+```yaml
+schema_version: 1
+task: <назва_завдання>
+kind: Справочник   # або Документ
+name: <Ім'я>
+description: "Що переносить це завдання і чому."
+
+source:
+  connection: com
+  connection_string: 'Srvr="<сервер>";Ref="<база>";'
+
+destination:
+  connection: bridge
+  # platform_exe/connect_args - опційно, інакше bridge_client.DEV за замовчуванням
+
+select_mode: all   # безпечний дефолт - SELECT *
+```
+
+Додайте секції за потребою (повний довідник полів - у Migrator-репозиторії
+`docs/schema-format-reference.md`):
+
+- `field_mappings` - ЛИШЕ для полів, що варто задокументувати/перейменувати
+  (стабільний `id` + `source_field`/`destination_field` + опис). НЕ
+  потрібно перелічувати всі поля, поки `select_mode: all`.
+- `related_catalogs` - з кроку 2, кожне з `detail: reference_only` (весь
+  пов'язаний довідник ЦІЛКОМ - підходить для невеликих довідників-переліків)
+  або `detail: full` (рекурсивний перенос, для об'ємних/складних випадків).
+  **Перед додаванням правила з `detail: reference_only` - перевірте розмір
+  довідника** (`ВЫБРАТЬ Ссылка ИЗ <Тип>` і подивитись кількість рядків):
+  для довідників з тисячами записів (класифікатори, довідники адрес)
+  `reference_only` перенесе ВСЕ і буде невиправдано важким - краще
+  розглянути `full` з обмеженою глибиною, або взагалі не каскадувати.
+- `tabular_parts` - назви табличних частин для переносу (кожна - окремий
+  запит `SELECT * FROM <Тип>.<ІмяТЧ>`).
+- `hooks` - точки розширення (`before_read`/`before_write`/
+  `after_each_item`/`after_write`), вбудовані у `migrator/hooks.py`
+  (`log_query`, `require_fields`, `log_progress`, `print_summary`).
+- `destination_write_options.additional_properties` - обхідні прапорці
+  бізнес-логіки приймача (напр. "пропустити перерахунок при імпорті") -
+  ЛИШЕ якщо приймач підтримує конкретний прапорець і ви ЗНАЄТЕ його назву
+  й призначення (не вгадуйте навмання).
+
+## Крок 4. Валідація ПЕРЕД першим запуском
+
+```powershell
+python -c "from migrator.schema import load_schema; load_schema(r'<шлях_до_schema.yaml>')"
+```
+
+Або через GUI (`python -m migrator gui` -> редактор схеми -> "Validate
+without saving").
+
+## Крок 5. Смоук-тест з обмеженням, ПОТІМ повний запуск
+
+```powershell
+python -m migrator run <корінь>:<завдання> --limit 5
+```
+
+Перевірте результат (кількість/помилки), і ЛИШЕ ПОТІМ - `/migrator-run-task`
+без обмеження. Після завершення - `/migrator-verify-transfer` для
+рігорозної перевірки збігу джерела й приймача.
