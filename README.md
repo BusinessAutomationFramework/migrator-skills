@@ -13,8 +13,9 @@ these don't duplicate.
 - [`migrator-new-task`](.claude/skills/migrator-new-task/SKILL.md) —
   step-by-step guide for creating a new transfer task: registering a
   task root, running `migrator suggest` for a `related_catalogs`
-  starting point, writing the full `schema.yaml`, validating, and a
-  first limited smoke test.
+  starting point, writing the full `schema.yaml` (including the `filter`
+  field, ≥ 1.2.0, for reading a known named subset instead of a whole
+  catalog), validating, and a first limited smoke test.
 - [`migrator-run-task`](.claude/skills/migrator-run-task/SKILL.md) —
   the discipline around actually running `python -m migrator run`
   safely: pre-flight checks against a stuck `1cv8.exe` session, schema
@@ -36,7 +37,9 @@ these don't duplicate.
   checking whether they already respect the standard
   `ОбменДанными.Загрузка` import flag — found while diagnosing why the
   "Склады" acceptance test's `КассыККМ` cascade failed 0/159 for what
-  turned out to be a one-line, general fix.
+  turned out to be a one-line, general fix. Also covers the unrelated but
+  similarly-shaped `ПредопределенноеЗначение()` "predefined item not found"
+  signature (fixed generally in BridgeTool ≥ 1.3.0).
 
 ## Origin
 
