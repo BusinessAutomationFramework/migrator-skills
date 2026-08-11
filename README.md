@@ -29,6 +29,14 @@ these don't duplicate.
   resets, the `Формат()` "empty date" serialization quirk — from real
   gaps), and a tabular-part row-count spot check. Don't trust a bare
   "Успешно: N" — this is what actually confirms a transfer worked.
+- [`migrator-diagnose-write-rejection`](.claude/skills/migrator-diagnose-write-rejection/SKILL.md) —
+  when the destination rejects a write with a business-rule error (not a
+  parsing/COM bug): a targeted metadata dump of just the one object,
+  finding its `ПередЗаписью`/`ОбработкаПроверкиЗаполнения` handlers, and
+  checking whether they already respect the standard
+  `ОбменДанными.Загрузка` import flag — found while diagnosing why the
+  "Склады" acceptance test's `КассыККМ` cascade failed 0/159 for what
+  turned out to be a one-line, general fix.
 
 ## Origin
 
